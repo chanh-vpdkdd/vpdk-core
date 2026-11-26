@@ -1,0 +1,61 @@
+{
+  "name": "@cn-vpdk-my/tra-cuu-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Lõi lập chỉ mục, tra cứu, CCTT và tìm tệp cho CN VPĐK",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    "./contracts": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js"
+    },
+    "./shared": {
+      "types": "./dist/shared.d.ts",
+      "import": "./dist/shared.js"
+    },
+    "./index": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./search": {
+      "types": "./dist/search.d.ts",
+      "import": "./dist/search.js"
+    },
+    "./cctt": {
+      "types": "./dist/cctt.d.ts",
+      "import": "./dist/cctt.js"
+    },
+    "./file-search": {
+      "types": "./dist/file-search.d.ts",
+      "import": "./dist/file-search.js"
+    },
+    "./sqlite": {
+      "types": "./dist/sqlite.d.ts",
+      "import": "./dist/sqlite.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test test/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "docxtemplater": "^3.69.0",
+    "fuse.js": "^7.0.0",
+    "pdfjs-dist": "^4.10.38",
+    "pizzip": "^3.2.0",
+    "xlsx": "^0.18.5",
+    "better-sqlite3": "^11.8.1",
+    "@types/node": "^22.0.0",
+    "@types/better-sqlite3": "^7.6.12"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}
