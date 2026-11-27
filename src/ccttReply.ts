@@ -398,6 +398,7 @@ export interface CcttReplyCompleteParams {
 
 export type CcttReplyCompleteCode =
   | 'ok'
+  | 'incomplete'
   | 'missing-model'
   | 'bad-url'
   | 'http'
@@ -908,6 +909,30 @@ export function parseCcttReplyAiJson(
       noiDungSoan: '',
     }),
   }
+}
+
+/** Dùng khi ghép các phần phản hồi AI, chỉ kết thúc khi JSON đã đọc được. */
+export function isCcttReplyAiJsonComplete(raw: string): boolean {
+  return parseCcttReplyAiJson(raw).ok &&
+    /["“](?:CacCaNhanDuocDeNghiXacMinh|caNhan|nguoi|danhSach|cacCaNhan)["”]\s*:/i.test(raw)
+}
+
+export const CCTT_REPLY_CONTINUE_PROMPT =
+  'JSON trước bị dừng giữa chừng. Chỉ viết tiếp ngay từ ký tự cuối cùng, không lặp lại phần đã viết, không mở lại JSON, không giải thích hay dùng markdown. Viết đến hết danh sách và đóng mọi dấu ngoặc.'
+
+export function appendCcttReplyAiJsonPart(previous: string, next: string): string {
+  const part = next
+  if (!part.trim()) return previous
+  if (!previous) return part
+  if (isCcttReplyAiJsonComplete(part)) return part
+  if (part.startsWith(previous.slice(0, Math.min(previous.length, 80))) && part.length > previous.length) {
+    return part
+  }
+  const maxOverlap = Math.min(previous.length, part.length, 1000)
+  for (let length = maxOverlap; length >= 16; length--) {
+    if (previous.endsWith(part.slice(0, length))) return previous + part.slice(length)
+  }
+  return previous + part
 }
 
 export function buildCcttReplyPrompt(

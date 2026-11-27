@@ -1,4 +1,7 @@
 import {
+  appendCcttReplyAiJsonPart,
+  CCTT_REPLY_CONTINUE_PROMPT,
+  isCcttReplyAiJsonComplete,
   readCcttReplyAttachedFile,
   type CcttReplyAttachedFile,
   type CcttReplyCompleteParams,
@@ -35,7 +38,8 @@ function readContent(payload: unknown): string {
 }
 
 const MAX_FILE_BYTES = 12 * 1024 * 1024
-const MAX_TOKENS = 2500
+const MAX_TOKENS = 8192
+const MAX_PARTS = 4
 
 function fileDataUrl(file: CcttReplyAttachedFile): string {
   if (file.base64.startsWith('data:')) return file.base64
@@ -189,43 +193,52 @@ export async function completeCcttReply(input: unknown): Promise<CcttReplyComple
   if (!endpoint) return result('bad-url', '')
 
   try {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+    const messages: unknown[] = [
+      {
+        role: 'system',
+        content: 'Bóc tách văn bản hành chính Việt Nam. Chỉ trả về một đối tượng JSON. Không markdown, không giải thích.',
       },
-      body: JSON.stringify({
-        model,
-        temperature: 0,
-        max_tokens: MAX_TOKENS,
-        messages: [
-          {
-            role: 'system',
-            content:
-              'Bóc tách văn bản hành chính Việt Nam. Chỉ trả về một đối tượng JSON. Không markdown, không giải thích.',
-          },
-          { role: 'user', content: userContent(prompt, file) },
-        ],
-      }),
-      signal: AbortSignal.timeout(file ? 180_000 : 120_000),
-    })
-    if (!response.ok) {
-      let detail = `HTTP ${response.status}`
-      try {
-        const body = (await response.json()) as { error?: { message?: string } | string }
-        if (typeof body.error === 'string' && body.error.trim()) detail = body.error.trim().slice(0, 240)
-        else if (body.error && typeof body.error === 'object' && body.error.message) {
-          detail = body.error.message.trim().slice(0, 240)
+      { role: 'user', content: userContent(prompt, file) },
+    ]
+    let content = ''
+    for (let attempt = 0; attempt < MAX_PARTS; attempt++) {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          model,
+          temperature: 0,
+          max_tokens: MAX_TOKENS,
+          messages,
+        }),
+        signal: AbortSignal.timeout(file ? 180_000 : 120_000),
+      })
+      if (!response.ok) {
+        let detail = `HTTP ${response.status}`
+        try {
+          const body = (await response.json()) as { error?: { message?: string } | string }
+          if (typeof body.error === 'string' && body.error.trim()) detail = body.error.trim().slice(0, 240)
+          else if (body.error && typeof body.error === 'object' && body.error.message) {
+            detail = body.error.message.trim().slice(0, 240)
+          }
+        } catch {
+          // Giữ mã HTTP khi máy không trả JSON.
         }
-      } catch {
-        // Giữ mã HTTP khi máy không trả JSON.
+        return result('http', detail, content)
       }
-      return result('http', detail)
+      const part = readContent(await response.json())
+      if (!part.trim()) return result(content ? 'incomplete' : 'empty', '', content)
+      const joined = appendCcttReplyAiJsonPart(content, part)
+      if (joined === content) return result('incomplete', '', content)
+      content = joined
+      if (isCcttReplyAiJsonComplete(content)) return result('ok', '', content)
+      messages.push({ role: 'assistant', content: part })
+      messages.push({ role: 'user', content: CCTT_REPLY_CONTINUE_PROMPT })
     }
-    const content = readContent(await response.json()).trim()
-    if (!content) return result('empty', '')
-    return result('ok', '', content)
+    return result('incomplete', '', content)
   } catch {
     return result('network', '')
   }
