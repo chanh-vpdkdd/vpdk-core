@@ -39,6 +39,15 @@ test('giá trị chỗ điền chỉ ghi đè những khóa được chọn', ()
   assert.equal(merged.soKyHieuVanBanCanTraLoi, '4152/VPĐK-A')
   assert.equal(merged.CoQuanBanHanhVanBan, 'Văn phòng Đăng ký đất đai')
   assert.deepEqual(parseCcttReplyValueResponse('{"soKyHieuVanBanCanTraLoi":', ids), {})
+  const content = parseCcttReplyValueResponse(
+    '{"NoiDungDoAITaoRa":"Nội dung theo chỉ dẫn","LanhDaoChiNhanh":""}',
+    ['NoiDungDoAITaoRa', 'LanhDaoChiNhanh'],
+  )
+  assert.deepEqual(content, { NoiDungDoAITaoRa: 'Nội dung theo chỉ dẫn', LanhDaoChiNhanh: '' })
+  const contentData = buildCcttReplyMergeData(extracted, { ...content, CaNhanHayCacCaNhan: 'người dân' })
+  assert.equal(contentData.NoiDungDoAITaoRa, 'Nội dung theo chỉ dẫn')
+  assert.equal(contentData.CaNhanHayCacCaNhan, 'người dân')
+  assert.equal(buildCcttReplyMergeData(extracted, { NoiDungDoAITaoRa: '' }).NoiDungDoAITaoRa, '')
 })
 
 test('DOCX nhận giá trị chỗ điền từ prompt trả lời', async () => {
@@ -47,7 +56,7 @@ test('DOCX nhận giá trị chỗ điền từ prompt trả lời', async () =>
     const zip = new PizZip()
     zip.file('[Content_Types].xml', '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>')
     zip.file('_rels/.rels', '<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>')
-    zip.file('word/document.xml', '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>{{soKyHieuVanBanCanTraLoi}}</w:t></w:r></w:p></w:body></w:document>')
+    zip.file('word/document.xml', '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>{{soKyHieuVanBanCanTraLoi}}</w:t></w:r></w:p><w:p><w:r><w:t>{{NoiDungDoAITaoRa}}</w:t></w:r></w:p></w:body></w:document>')
     const saved = saveCcttReplyTemplate(root, { name: 'Mẫu thử', fileName: 'mau.docx', base64: zip.generate({ type: 'base64' }) })
     assert.equal(saved.success, true)
     const extracted = { ...emptyCcttReplyExtracted(), soKyHieu: '4152/VPĐK' }
@@ -55,11 +64,12 @@ test('DOCX nhận giá trị chỗ điền từ prompt trả lời', async () =>
       templateId: saved.template.id,
       resultId: 'khong-tim-thay',
       extracted,
-      valueOverrides: { soKyHieuVanBanCanTraLoi: '4152/VPĐK-A' },
+      valueOverrides: { soKyHieuVanBanCanTraLoi: '4152/VPĐK-A', NoiDungDoAITaoRa: 'Văn bản cố định' },
     })
     assert.equal(rendered.success, true)
     const text = await extractCcttReplyText({ fileName: rendered.fileName, base64: rendered.docxBase64 })
-    assert.equal(text.text, '4152/VPĐK-A')
+    assert.match(text.text, /4152\/VPĐK-A/)
+    assert.match(text.text, /Văn bản cố định/)
   } finally {
     await rm(root, { recursive: true, force: true })
   }

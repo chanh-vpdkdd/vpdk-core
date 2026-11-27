@@ -54,17 +54,20 @@ export const CCTT_REPLY_FIELD_PROMPT_IDS = [
 export type CcttReplyFieldPromptId = (typeof CCTT_REPLY_FIELD_PROMPT_IDS)[number]
 export type CcttReplyFieldPromptMap = Record<CcttReplyFieldPromptId, string>
 
-/** Chỉ các chỗ điền lấy dữ kiện từ văn bản đến mới được AI viết lại khi soạn trả lời. */
-export const CCTT_REPLY_REPLY_VALUE_IDS = [
+/** Các chỗ điền có thể dùng giá trị cố định, mẫu hoặc prompt khi soạn trả lời. */
+export const CCTT_REPLY_REPLY_VALUE_IDS = CCTT_REPLY_FIELD_PROMPT_IDS
+export type CcttReplyReplyValueId = (typeof CCTT_REPLY_REPLY_VALUE_IDS)[number]
+export type CcttReplyValueOverrides = Partial<Record<CcttReplyReplyValueId, string>>
+
+const CCTT_REPLY_EXTRACT_FIELD_IDS = [
   'soKyHieuVanBanCanTraLoi',
   'NgayVanBanCanTraLoi',
   'CoQuanBanHanhVanBan',
   'CacCaNhanDuocDeNghiXacMinh',
 ] as const
-export type CcttReplyReplyValueId = (typeof CCTT_REPLY_REPLY_VALUE_IDS)[number]
-export type CcttReplyValueOverrides = Partial<Record<CcttReplyReplyValueId, string>>
+type CcttReplyExtractFieldId = (typeof CCTT_REPLY_EXTRACT_FIELD_IDS)[number]
 
-export const CCTT_REPLY_EXTRACT_FIELD_PROMPT_DEFAULTS: Pick<CcttReplyFieldPromptMap, CcttReplyReplyValueId> = {
+export const CCTT_REPLY_EXTRACT_FIELD_PROMPT_DEFAULTS: Pick<CcttReplyFieldPromptMap, CcttReplyExtractFieldId> = {
   soKyHieuVanBanCanTraLoi:
     'Số ký hiệu của văn bản đến, gần chữ "Số:", giữ nguyên dấu gạch và ký hiệu. Không lấy số công văn đi, không lấy số của công văn trả lời.',
   NgayVanBanCanTraLoi:
@@ -189,8 +192,8 @@ export function resolveCcttReplyMainPrompt(stored: string): string {
 
 export function resolveCcttReplyFieldPrompt(id: CcttReplyFieldPromptId, stored: string): string {
   if (sameStoredPrompt(stored, CCTT_REPLY_FIELD_PROMPT_LEGACY[id])) return CCTT_REPLY_FIELD_PROMPT_DEFAULTS[id]
-  if (CCTT_REPLY_REPLY_VALUE_IDS.includes(id as CcttReplyReplyValueId) &&
-    stored.trim() === CCTT_REPLY_EXTRACT_FIELD_PROMPT_DEFAULTS[id as CcttReplyReplyValueId]) {
+  if (CCTT_REPLY_EXTRACT_FIELD_IDS.includes(id as CcttReplyExtractFieldId) &&
+    stored.trim() === CCTT_REPLY_EXTRACT_FIELD_PROMPT_DEFAULTS[id as CcttReplyExtractFieldId]) {
     return CCTT_REPLY_FIELD_PROMPT_DEFAULTS[id]
   }
   return stored
@@ -1053,12 +1056,15 @@ export function buildCcttReplyValuePrompt(
       tenCoQuanGui: extracted.tenCoQuanGui,
       caNhan: extracted.caNhan,
       doiTuong: extracted.doiTuong,
+      ketQuaTraCuu: extracted.ketQuaTraCuu,
+      noiDungSoan: extracted.noiDungSoan,
     }),
     ...fields.flatMap((id) => [
       `{{${id}}}: ${ccttReplyFieldPrompt(id, prompts)}`,
       `Giá trị mặc định: ${JSON.stringify(defaults[id] ?? '')}`,
       ccttReplySampleBlock(samples?.[id]),
     ]),
+    'Chỉ dẫn về văn bản thuần áp dụng cho giá trị của từng trường; toàn bộ phản hồi vẫn phải là một object JSON.',
     `Chỉ trả JSON với các khóa: ${fields.join(', ')}.`,
   ]
   return lines.filter(Boolean).join('\n')
@@ -1075,7 +1081,7 @@ export function parseCcttReplyValueResponse(raw: string, ids: readonly CcttReply
     const values = parsed as Record<string, unknown>
     const result: CcttReplyValueOverrides = {}
     for (const id of ids) {
-      if (CCTT_REPLY_REPLY_VALUE_IDS.includes(id) && typeof values[id] === 'string' && values[id].trim()) {
+      if (CCTT_REPLY_REPLY_VALUE_IDS.includes(id) && typeof values[id] === 'string') {
         result[id] = values[id].trim().slice(0, 20_000)
       }
     }
@@ -1157,7 +1163,7 @@ export function buildCcttReplyMergeData(
   }
   for (const key of CCTT_REPLY_BLANK_NUMBER_KEYS) context[key] = ''
   for (const id of CCTT_REPLY_REPLY_VALUE_IDS) {
-    if (typeof overrides?.[id] === 'string' && overrides[id].trim()) context[id] = overrides[id].trim().slice(0, 20_000)
+    if (typeof overrides?.[id] === 'string') context[id] = overrides[id].slice(0, 20_000)
   }
   return context
 }
