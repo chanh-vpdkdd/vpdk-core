@@ -6,7 +6,8 @@
   "description": "Lõi lập chỉ mục, tra cứu, CCTT và tìm tệp cho CN VPĐK",
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "docs"
   ],
   "exports": {
     "./contracts": {

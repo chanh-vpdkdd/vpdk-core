@@ -1,64 +1,56 @@
-# Tra cứu core
+# VPĐK Core
 
-Thư viện TypeScript/Node.js dùng cho lập chỉ mục Excel, tra cứu hồ sơ, xử lý văn bản cung cấp thông tin và quét tìm tệp. Thư viện không phụ thuộc Electron, React, NocoDB hoặc cấu hình của ứng dụng.
+Thư viện TypeScript cho các nghiệp vụ tra cứu dữ liệu và trả lời văn bản cung cấp thông tin (CCTT). Thư viện đọc dữ liệu Excel, lập chỉ mục SQLite, tìm hồ sơ, hỗ trợ xử lý văn bản và quét tệp theo tên hoặc đường dẫn.
 
-## Yêu cầu
+VPĐK Core chạy trên Node.js và có thể tích hợp vào Electron. Thư viện không tự kết nối NocoDB, quản lý tài khoản, cung cấp giao diện hay khởi động web server; ứng dụng tích hợp chịu trách nhiệm cho các phần đó.
 
-Node.js 20 trở lên. `better-sqlite3` là phụ thuộc native, cần cài cho đúng phiên bản Node hoặc Electron sử dụng. Trên Electron, build lại native module cho Electron theo quy trình đóng gói của ứng dụng.
+## Tài liệu
+
+| Nhu cầu | Hướng dẫn |
+| --- | --- |
+| Cài đặt, build, sử dụng package và tích hợp Electron | [Bắt đầu](docs/BAT_DAU.md) |
+| Đọc Excel, lập chỉ mục SQLite và tìm kiếm | [Index và tra cứu](docs/INDEX_VA_TRA_CUU.md) |
+| Trích xuất, rà soát và tạo văn bản CCTT | [Văn bản CCTT](docs/VAN_BAN_CCTT.md) |
+| Quét, sao chép tệp và xuất báo cáo | [Tìm tệp](docs/TIM_TEP.md) |
+| Kiến trúc, kiểm thử và quy trình phát triển | [Phát triển thư viện](docs/PHAT_TRIEN.md) |
+
+## Chạy từ mã nguồn
+
+Yêu cầu Node.js 20 trở lên và npm. Từ thư mục repository:
+
+```bash
+npm ci
+npm run build
+npm test
+```
+
+`better-sqlite3` là module native: cài phụ thuộc cho đúng runtime và hệ điều hành sẽ chạy thư viện. Khi dùng Electron, cần bản native tương thích Electron. Chi tiết: [Bắt đầu](docs/BAT_DAU.md).
 
 ## Các entry point
 
-| Đường dẫn | Nội dung |
-| --- | --- |
-| `@cn-vpdk-my/tra-cuu-core/contracts` | Kiểu bản ghi, kết quả và tham số |
-| `@cn-vpdk-my/tra-cuu-core/shared` | Chuẩn hóa, quy tắc CCTT và kiểu dùng chung; không cần Node |
-| `@cn-vpdk-my/tra-cuu-core/index` | Parser Excel và lập chỉ mục |
-| `@cn-vpdk-my/tra-cuu-core/sqlite` | Lưu và đọc chỉ mục SQLite |
-| `@cn-vpdk-my/tra-cuu-core/search` | Tìm kiếm và xếp hạng |
-| `@cn-vpdk-my/tra-cuu-core/cctt` | Trích xuất, rà soát và tạo văn bản |
-| `@cn-vpdk-my/tra-cuu-core/file-search` | Quét tệp, sao chép và báo cáo |
+Package có tên `@cn-vpdk-my/tra-cuu-core`, dùng ESM và chưa khai báo entry point gốc. Import qua đường dẫn tương ứng:
 
-Các entry point ngoài `shared` và `contracts` cần Node.js. Hợp đồng đang ở phiên bản `0.x`; chưa công bố ổn định.
+| Entry point | Công dụng | Môi trường |
+| --- | --- | --- |
+| `/contracts` | Kiểu bản ghi, kết quả và tham số | TypeScript |
+| `/shared` | Chuẩn hóa và quy tắc CCTT dùng chung | Không yêu cầu API Node |
+| `/index` | Parser Excel và lập chỉ mục | Node.js |
+| `/sqlite` | Đọc và ghi SQLite | Node.js |
+| `/search` | Tìm kiếm và xếp hạng | Node.js |
+| `/cctt` | Trích xuất, rà soát và tạo văn bản | Node.js |
+| `/file-search` | Quét, sao chép và báo cáo tệp | Node.js |
 
-## Lập chỉ mục và tra cứu
+Ví dụ import:
 
 ```ts
 import { buildSearchIndex } from '@cn-vpdk-my/tra-cuu-core/index'
-import { openSearchDatabase, loadProfileFromDb, loadIndex } from '@cn-vpdk-my/tra-cuu-core/sqlite'
 import { SearchIndexCore } from '@cn-vpdk-my/tra-cuu-core/search'
-
-const db = openSearchDatabase('/duong-dan/timluukho.db')
-try {
-  const result = await buildSearchIndex({
-    db,
-    rawDataDir: '/duong-dan/excel',
-    profile: loadProfileFromDb(db),
-    // Ứng dụng có thể cung cấp hồ sơ đo đạc và callback tiến độ.
-    loadAdditionalRecords: async () => ({ records: [] }),
-  })
-  if (!result.success || result.errors.length) throw new Error(result.errors.join('; '))
-  const index = loadIndex(db)
-  const search = new SearchIndexCore()
-  search.appendBatch(index?.records ?? [], 0)
-  console.log(search.search('Nguyễn Văn A'))
-} finally {
-  db.close()
-}
+import type { HoSoRecord } from '@cn-vpdk-my/tra-cuu-core/contracts'
 ```
 
-Việc nạp hồ sơ từ NocoDB, quyết định dùng cache nguồn ngoài và thông báo lỗi thuộc ứng dụng gọi. Lỗi từ nguồn không nên được coi là kết quả “không có hồ sơ”. `AbortSignal` dừng ở điểm kiểm tra giữa các bước; những tệp đã đưa vào parser hoặc cache đã cập nhật có thể vẫn hoàn tất.
+## Phạm vi và trạng thái
 
-Các hàm tìm tệp hỗ trợ chế độ chỉ quét hoặc sao chép, callback tiến độ và `AbortSignal`. Giải quyết `\\host` dựa vào lệnh `net view` trên Windows; với Linux truyền đường dẫn thư mục đã mount vào `quickFileSearchOnRoots`.
-
-## Phát triển
-
-```bash
-npm install
-npm run build
-npm test
-npm pack
-```
-
-`npm test` cần `better-sqlite3` tương thích với Node đang chạy. Trong workspace ứng dụng, native module có thể đã build cho Electron; khi đó chạy test bằng Electron ở chế độ Node sau khi build thư viện.
-
-Dữ liệu kiểm thử dùng tệp và thư mục tạm. Không đưa dữ liệu hồ sơ, token, cấu hình hoặc bản sao database thực vào repository.
+- Phiên bản hiện tại là `0.x`; kiểm tra thay đổi hợp đồng khi cập nhật.
+- Package được đánh dấu `private` và chưa có quy trình phát hành lên npm registry. Hướng dẫn dùng tarball nội bộ có trong [Bắt đầu](docs/BAT_DAU.md).
+- Kết quả tìm kiếm và rà soát là dữ liệu hỗ trợ xử lý. Ứng dụng tích hợp cần kiểm tra trạng thái chỉ mục, lỗi nguồn dữ liệu và xác nhận nghiệp vụ trước khi đưa ra kết luận.
+- Các ví dụ và kiểm thử dùng dữ liệu giả. Không đưa hồ sơ, token hoặc database thật vào repository.
