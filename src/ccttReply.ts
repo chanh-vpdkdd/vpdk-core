@@ -54,7 +54,17 @@ export const CCTT_REPLY_FIELD_PROMPT_IDS = [
 export type CcttReplyFieldPromptId = (typeof CCTT_REPLY_FIELD_PROMPT_IDS)[number]
 export type CcttReplyFieldPromptMap = Record<CcttReplyFieldPromptId, string>
 
-export const CCTT_REPLY_FIELD_PROMPT_DEFAULTS: CcttReplyFieldPromptMap = {
+/** Chỉ các chỗ điền lấy dữ kiện từ văn bản đến mới được AI viết lại khi soạn trả lời. */
+export const CCTT_REPLY_REPLY_VALUE_IDS = [
+  'soKyHieuVanBanCanTraLoi',
+  'NgayVanBanCanTraLoi',
+  'CoQuanBanHanhVanBan',
+  'CacCaNhanDuocDeNghiXacMinh',
+] as const
+export type CcttReplyReplyValueId = (typeof CCTT_REPLY_REPLY_VALUE_IDS)[number]
+export type CcttReplyValueOverrides = Partial<Record<CcttReplyReplyValueId, string>>
+
+export const CCTT_REPLY_EXTRACT_FIELD_PROMPT_DEFAULTS: Pick<CcttReplyFieldPromptMap, CcttReplyReplyValueId> = {
   soKyHieuVanBanCanTraLoi:
     'Số ký hiệu của văn bản đến, gần chữ "Số:", giữ nguyên dấu gạch và ký hiệu. Không lấy số công văn đi, không lấy số của công văn trả lời.',
   NgayVanBanCanTraLoi:
@@ -63,6 +73,13 @@ export const CCTT_REPLY_FIELD_PROMPT_DEFAULTS: CcttReplyFieldPromptMap = {
     'Cơ quan ban hành văn bản đến, giữ nguyên tên trên văn bản. Không lấy nơi nhận, không lấy dòng "Kính gửi".',
   CacCaNhanDuocDeNghiXacMinh:
     'Lấy hết người được đề nghị xác minh: trong câu, trong danh sách, trong bảng, trong phụ lục. Một dòng bảng là một người. Đọc đến hết danh sách, không dừng ở người đầu tiên. Mỗi người một phần tử, đủ sáu khóa chuỗi hoTen, ngaySinh, CCCD, CMND, DiaChiThuongTru, DiaChi. hoTen là tên người, bắt buộc để rà soát, bỏ ông, bà, anh, chị đứng trước. Có họ thì ghi đủ họ và tên. Tên nhiều tiếng phải giữ nguyên cả cụm, không cắt lấy tiếng cuối. Chỉ ghi một tiếng khi văn bản thật sự chỉ có một tiếng. Tên không có họ vẫn hợp lệ, giữ nguyên, không bịa thêm họ. Người đồng bào thường không có họ: tên một tiếng hoặc tên có dấu nháy như Siu, Kpă, Y Ngông, H\'Blê vẫn là một người. Không bỏ người chỉ vì không có họ. Không có tên thì không đưa vào mảng. ngaySinh dạng YYYY-MM-DD; chỉ có năm thì YYYY; không có thì chuỗi rỗng. CCCD và CMND không bắt buộc nhưng rất quan trọng để tra cứu đúng người: có trong văn bản thì lấy đủ chữ số, không có thì chuỗi rỗng. CCCD thường là 12 chữ số, CMND thường là 9 chữ số. DiaChiThuongTru chỉ khi văn bản ghi địa chỉ thường trú. DiaChi khi văn bản chỉ ghi địa chỉ nơi ở mà không ghi rõ thường trú hay tạm trú. Không lấy địa chỉ tạm trú. Không bịa số hoặc địa chỉ. Không đưa tiêu đề cột, số thứ tự, cơ quan ban hành, người ký.',
+}
+
+export const CCTT_REPLY_FIELD_PROMPT_DEFAULTS: CcttReplyFieldPromptMap = {
+  soKyHieuVanBanCanTraLoi: 'Điền số ký hiệu văn bản đến đã bóc tách, giữ nguyên dấu gạch và ký hiệu. Không lấy số công văn trả lời.',
+  NgayVanBanCanTraLoi: 'Điền ngày văn bản đến theo cách trình bày trong công văn trả lời, chỉ dùng ngày đã bóc tách.',
+  CoQuanBanHanhVanBan: 'Điền tên cơ quan ban hành văn bản đến đã bóc tách, giữ đúng tên cơ quan.',
+  CacCaNhanDuocDeNghiXacMinh: 'Điền danh sách người được đề nghị xác minh thành văn bản để chèn vào công văn. Giữ đủ người và dữ kiện đã bóc tách, không thêm người.',
   CaNhanHayCacCaNhan: 'Một người thì điền «cá nhân». Nhiều người thì điền «các cá nhân».',
   NoiDungDoAITaoRa:
     'Soạn đúng một đoạn văn cho công văn trả lời của Chi nhánh Văn phòng Đăng ký đất đai Mang Yang, gửi Văn phòng Đăng ký đất đai tỉnh Gia Lai. Không viết quốc hiệu, trích yếu, kính gửi, nơi nhận, chức danh hay chữ ký. Không markdown. Không JSON. Chỉ dùng dữ kiện được đưa. Không thêm người, năm sinh, địa chỉ, số giấy chứng nhận không có trong dữ kiện. Mở bằng "Qua kiểm tra, rà soát dữ liệu và hồ sơ lưu trữ tại Chi nhánh Văn phòng Đăng ký đất đai Mang Yang". Không ghi nhận thì kết luận không kê khai đăng ký cấp Giấy chứng nhận hoặc đăng ký biến động trên địa bàn. Có thông tin thì ghi nhận rồi liệt kê từng hồ sơ: họ tên, năm sinh, địa chỉ, số phát hành giấy chứng nhận. Một người viết "cá nhân", nhiều người viết "các cá nhân".',
@@ -172,6 +189,10 @@ export function resolveCcttReplyMainPrompt(stored: string): string {
 
 export function resolveCcttReplyFieldPrompt(id: CcttReplyFieldPromptId, stored: string): string {
   if (sameStoredPrompt(stored, CCTT_REPLY_FIELD_PROMPT_LEGACY[id])) return CCTT_REPLY_FIELD_PROMPT_DEFAULTS[id]
+  if (CCTT_REPLY_REPLY_VALUE_IDS.includes(id as CcttReplyReplyValueId) &&
+    stored.trim() === CCTT_REPLY_EXTRACT_FIELD_PROMPT_DEFAULTS[id as CcttReplyReplyValueId]) {
+    return CCTT_REPLY_FIELD_PROMPT_DEFAULTS[id]
+  }
   return stored
 }
 
@@ -331,6 +352,7 @@ export interface CcttReplyRenderParams {
   templateId: string
   extracted: CcttReplyExtracted
   orMode?: CcttReplyOrMode
+  valueOverrides?: CcttReplyValueOverrides
 }
 
 export const CCTT_REPLY_OR_MODES = ['auto', 'left', 'right'] as const
@@ -953,13 +975,13 @@ export function buildCcttReplyPrompt(
   const lines = [
     mainPrompt?.trim() || CCTT_REPLY_MAIN_PROMPT_DEFAULT,
     '',
-    `soKyHieuVanBanCanTraLoi: ${ccttReplyFieldPrompt('soKyHieuVanBanCanTraLoi', prompts)}`,
+    `soKyHieuVanBanCanTraLoi: ${prompts?.soKyHieuVanBanCanTraLoi?.trim() || CCTT_REPLY_EXTRACT_FIELD_PROMPT_DEFAULTS.soKyHieuVanBanCanTraLoi}`,
     ccttReplySampleBlock(samples?.soKyHieuVanBanCanTraLoi),
-    `ngayVanBanCanTraLoi: ${ccttReplyFieldPrompt('NgayVanBanCanTraLoi', prompts)}`,
+    `ngayVanBanCanTraLoi: ${prompts?.NgayVanBanCanTraLoi?.trim() || CCTT_REPLY_EXTRACT_FIELD_PROMPT_DEFAULTS.NgayVanBanCanTraLoi}`,
     ccttReplySampleBlock(samples?.NgayVanBanCanTraLoi),
-    `coQuanBanHanhVanBan: ${ccttReplyFieldPrompt('CoQuanBanHanhVanBan', prompts)}`,
+    `coQuanBanHanhVanBan: ${prompts?.CoQuanBanHanhVanBan?.trim() || CCTT_REPLY_EXTRACT_FIELD_PROMPT_DEFAULTS.CoQuanBanHanhVanBan}`,
     ccttReplySampleBlock(samples?.CoQuanBanHanhVanBan),
-    `CacCaNhanDuocDeNghiXacMinh: ${ccttReplyFieldPrompt('CacCaNhanDuocDeNghiXacMinh', prompts)}`,
+    `CacCaNhanDuocDeNghiXacMinh: ${prompts?.CacCaNhanDuocDeNghiXacMinh?.trim() || CCTT_REPLY_EXTRACT_FIELD_PROMPT_DEFAULTS.CacCaNhanDuocDeNghiXacMinh}`,
     'hoTen bắt buộc. Tên nhiều tiếng phải giữ nguyên cả cụm, không cắt lấy tiếng cuối. Chỉ ghi một tiếng khi văn bản thật sự chỉ có một tiếng. Tên không có họ vẫn nhận, giữ nguyên, không bịa thêm họ. Người đồng bào thường không có họ. Không có tên thì không đưa người đó vào mảng. CCCD và CMND không bắt buộc nhưng phải lấy nếu văn bản có. DiaChiThuongTru ưu tiên hơn DiaChi. Không bịa số.',
     ccttReplySampleBlock(samples?.CacCaNhanDuocDeNghiXacMinh),
     'Chỉ trả JSON bóc dữ liệu. Không soạn công văn.',
@@ -1012,6 +1034,57 @@ export function buildCcttReplyComposePrompt(
   return lines.filter((line) => line !== '').join('\n')
 }
 
+/** Dùng sau rà soát, khi người dùng chọn mẫu tham khảo hoặc prompt riêng cho chỗ điền. */
+export function buildCcttReplyValuePrompt(
+  extracted: CcttReplyExtracted,
+  ids: readonly CcttReplyReplyValueId[],
+  prompts?: Partial<CcttReplyFieldPromptMap>,
+  samples?: CcttReplyFieldSampleMap,
+): string {
+  const defaults = buildCcttReplyMergeData(extracted)
+  const fields = ids.filter((id) => CCTT_REPLY_REPLY_VALUE_IDS.includes(id))
+  const lines = [
+    'Điền các chỗ {{...}} của công văn trả lời dựa trên dữ kiện đã bóc tách. Chỉ dùng dữ kiện được cung cấp, không bịa hoặc thay đổi danh sách người.',
+    'Mỗi giá trị đầu ra là chuỗi. Trả về đúng một object JSON với các khóa được yêu cầu, không markdown hoặc giải thích.',
+    'Dữ kiện đã bóc tách:',
+    JSON.stringify({
+      soKyHieu: extracted.soKyHieu,
+      ngayVanBan: extracted.ngayVanBan,
+      tenCoQuanGui: extracted.tenCoQuanGui,
+      caNhan: extracted.caNhan,
+      doiTuong: extracted.doiTuong,
+    }),
+    ...fields.flatMap((id) => [
+      `{{${id}}}: ${ccttReplyFieldPrompt(id, prompts)}`,
+      `Giá trị mặc định: ${JSON.stringify(defaults[id] ?? '')}`,
+      ccttReplySampleBlock(samples?.[id]),
+    ]),
+    `Chỉ trả JSON với các khóa: ${fields.join(', ')}.`,
+  ]
+  return lines.filter(Boolean).join('\n')
+}
+
+export function parseCcttReplyValueResponse(raw: string, ids: readonly CcttReplyReplyValueId[]): CcttReplyValueOverrides {
+  const content = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
+  const start = content.indexOf('{')
+  const end = content.lastIndexOf('}')
+  if (start < 0 || end <= start) return {}
+  try {
+    const parsed: unknown = JSON.parse(content.slice(start, end + 1))
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+    const values = parsed as Record<string, unknown>
+    const result: CcttReplyValueOverrides = {}
+    for (const id of ids) {
+      if (CCTT_REPLY_REPLY_VALUE_IDS.includes(id) && typeof values[id] === 'string' && values[id].trim()) {
+        result[id] = values[id].trim().slice(0, 20_000)
+      }
+    }
+    return result
+  } catch {
+    return {}
+  }
+}
+
 export function resolveCcttReplyTemplate(
   selectedId: string,
   mauGoiY: CcttReplyMatchId,
@@ -1056,7 +1129,10 @@ function noiDungMau(cachGoi: string, ketQua: string): string {
   return `${head}, ghi nhận ${cachGoi} nêu trên có thông tin như sau:\n${ketQua.trim()}`
 }
 
-export function buildCcttReplyMergeData(extracted: CcttReplyExtracted): Record<string, string> {
+export function buildCcttReplyMergeData(
+  extracted: CcttReplyExtracted,
+  overrides?: CcttReplyValueOverrides,
+): Record<string, string> {
   const data = normalizeCcttReplyExtracted(extracted)
   const people = data.caNhan.filter((person) => person.hoTen.trim())
   const danhSach = people.length > 0 ? formatCcttReplyDoiTuong(people) : data.doiTuong
@@ -1080,6 +1156,9 @@ export function buildCcttReplyMergeData(extracted: CcttReplyExtracted): Record<s
     LanhDaoChiNhanh: '',
   }
   for (const key of CCTT_REPLY_BLANK_NUMBER_KEYS) context[key] = ''
+  for (const id of CCTT_REPLY_REPLY_VALUE_IDS) {
+    if (typeof overrides?.[id] === 'string' && overrides[id].trim()) context[id] = overrides[id].trim().slice(0, 20_000)
+  }
   return context
 }
 

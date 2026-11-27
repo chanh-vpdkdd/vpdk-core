@@ -82,7 +82,7 @@ export function renderCcttReplyDocx(root: string, input: unknown): CcttReplyRend
       delimiters: { start: '{{', end: '}}' },
       nullGetter: () => '',
     })
-    doc.render(buildCcttReplyMergeData(extracted))
+    doc.render(buildCcttReplyMergeData(extracted, params.valueOverrides))
     const rendered = doc.getZip()
     const documentXml = rendered.file('word/document.xml')
     if (documentXml) {
